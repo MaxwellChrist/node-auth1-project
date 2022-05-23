@@ -43,32 +43,28 @@ router.post('/register', checkUsernameFree, checkPasswordLength, async (req, res
     "message": "Password must be longer than 3 chars"
   }
  */
-router.post('/login', checkUsernameExists, async (req, res) => {
-  // const username = req.body.username
-  // const password = req.body.password
-
-  // let result = await Users.findBy({ username })
-
-  
-  // req.session.user = result
-  // res.status(200).json(`Welcome ${username}!`)
-  try {
+router.post('/login', checkUsernameExists, (req, res, next) => {
     let { username, password } = req.body;
-
-    let alreadyExists = await Users.findBy({ username }).first() != null;
-    if(alreadyExists) {
-        next({ status: 400, message: "user already exists" });
-        return;
+    if (bcrypt.compareSync(password, req.user.password)) {
+      req.session.user = req.user
+      res.json({ message: `Welcome ${username}!`})
+    } else {
+      next({ status: 401, message: "Invalid credentials" })
     }
+  })
 
-    let hash = bcrypt.hashSync(password, 10);
-    let result = await Users.add({ username, password: hash });
+    // let { username, password } = req.body;
 
-    res.status(201).json({ message: `You are now registered as "${username}"`});
-} catch(err) {
-    next(err);
-}
-})
+    // let alreadyExists = await Users.findBy({ username }).first() != null;
+    // if(alreadyExists) {
+    //     next({ status: 400, message: "user already exists" });
+    //     return;
+    // }
+
+    // let hash = bcrypt.hashSync(password, 10);
+    // let result = await Users.add({ username, password: hash });
+
+    // res.status(201).json({ message: `You are now registered as "${username}"`});
 
 /**
   2 [POST] /api/auth/login { "username": "sue", "password": "1234" }
@@ -85,7 +81,14 @@ router.post('/login', checkUsernameExists, async (req, res) => {
     "message": "Invalid credentials"
   }
  */
-
+  router.get('/logout', (req, res, next) => {
+    if(req.session.user != null) {
+      req.session.destroy();
+      res.status(200).json({ message: "logged out" });
+    } else {
+        res.status(400).json({ message: "no session" });
+    }
+});
 
 /**
   3 [GET] /api/auth/logout
